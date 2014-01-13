@@ -299,6 +299,7 @@ namespace A_Island
                 panel.Children.Add(popup);
                 popup.Child = new Image();
                 WebView wv = new WebView();
+                //TODO
             }
             popup.IsOpen = true;
             Image image = popup.Child as Image;
