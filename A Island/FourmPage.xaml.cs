@@ -298,6 +298,7 @@ namespace A_Island
                 popup.IsLightDismissEnabled = true;
                 panel.Children.Add(popup);
                 popup.Child = new Image();
+                WebView wv = new WebView();
             }
             popup.IsOpen = true;
             Image image = popup.Child as Image;
