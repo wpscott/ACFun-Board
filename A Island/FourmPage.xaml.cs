@@ -484,7 +484,7 @@ namespace A_Island
 
         private void refreshButton_Click(object sender, RoutedEventArgs e)
         {
-
+            thread_source.changeThread(thread_source.thread_id);
         }
 
         private void postButton_Click(object sender, RoutedEventArgs e)
