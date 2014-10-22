@@ -3,18 +3,19 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
+using System.Net.Http;
 using System.Runtime.InteropServices.WindowsRuntime;
-using System.Windows.Input;
-using Windows.Foundation;
-using Windows.Foundation.Collections;
-using Windows.UI.ViewManagement;
+using Windows.Graphics.Imaging;
+using Windows.Storage;
+using Windows.Storage.Pickers;
+using Windows.Storage.Streams;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Controls.Primitives;
-using Windows.UI.Xaml.Data;
 using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media;
+using Windows.UI.Xaml.Media.Animation;
+using Windows.UI.Xaml.Media.Imaging;
 using Windows.UI.Xaml.Navigation;
 
 // “拆分页”项模板在 http://go.microsoft.com/fwlink/?LinkId=234234 上有介绍
@@ -29,11 +30,11 @@ namespace A_Island
     {
         private NavigationHelper navigationHelper;
         private ObservableDictionary defaultViewModel = new ObservableDictionary();
+        private StorageFile selectedFile;
         private ThreadSource forum_source = new ThreadSource(), thread_source = new ThreadSource();
         private ForumList forum_list = new ForumList();
-        private Popup popup;
-        private bool isItemClicked = false;
-        private uint clickedThread, selectedThread;
+        private bool isItemClicked = false, isPost = false, isCommentClicked = false;
+        private uint clickedThread, selectedPost;
 
         private const uint LOAD = 100;
         private const uint REFRESH = 50;
@@ -80,6 +81,9 @@ namespace A_Island
             thread_source.hasLoadedMore = false;
             forum_source.canRefresh = true;
             thread_source.hasLoadedMore = false;
+
+            popupImage.RenderTransform = new CompositeTransform();
+            popupImage.ManipulationMode = Windows.UI.Xaml.Input.ManipulationModes.Scale | Windows.UI.Xaml.Input.ManipulationModes.TranslateX | Windows.UI.Xaml.Input.ManipulationModes.TranslateY;
         }
 
         void itemDetail_LayoutUpdated(object sender, object e)
@@ -218,7 +222,7 @@ namespace A_Island
             }
             clickedThread = (e.ClickedItem as Thread).ID;
             thread_source.changeThread(clickedThread);
-            selectedThread = 0;
+            selectedPost = 0;
             this.InvalidateVisualState();
 #if DEBUG
             Debug.WriteLine("Click ID: " + thread_source.thread_id);
@@ -233,11 +237,11 @@ namespace A_Island
 #endif
             if (e.AddedItems.Count > 0)
             {
-                selectedThread = (e.AddedItems[0] as Thread).ID;
+                selectedPost = (e.AddedItems[0] as Thread).ID;
             }
             else if (e.RemovedItems.Count > 0)
             {
-                selectedThread = 0;
+                selectedPost = 0;
             }
         }
 
@@ -292,28 +296,18 @@ namespace A_Island
 
         private void Image_Tapped(object sender, TappedRoutedEventArgs e)
         {
-            if (popup == null)
-            {
-                popup = new Popup();
-                popup.IsLightDismissEnabled = true;
-                panel.Children.Add(popup);
-                popup.Child = new Image();
-                WebView wv = new WebView();
-                //TODO
-            }
-            popup.IsOpen = true;
-            Image image = popup.Child as Image;
-            image.Width = Window.Current.CoreWindow.Bounds.Width / 2;
-            image.Height = Window.Current.CoreWindow.Bounds.Height / 2;
-            image.Stretch = Stretch.Uniform;
-            image.Source = new Windows.UI.Xaml.Media.Imaging.BitmapImage(new Uri(((sender as Image).DataContext as Thread).ImageSrc));
-            image.RenderTransform = new CompositeTransform();
-            image.ManipulationMode = Windows.UI.Xaml.Input.ManipulationModes.Scale | Windows.UI.Xaml.Input.ManipulationModes.TranslateX | Windows.UI.Xaml.Input.ManipulationModes.TranslateY;
-            image.PointerWheelChanged += image_PointerWheelChanged;
-            image.ManipulationDelta += image_ManipulationDelta;
-            popup.HorizontalOffset = (Window.Current.CoreWindow.Bounds.Width - image.Width) / 2;
-            popup.VerticalOffset = (Window.Current.CoreWindow.Bounds.Height - image.Height) / 2;
+            popupImage.Source = new BitmapImage(new Uri(((sender as Image).DataContext as Thread).Image));
             System.GC.Collect();
+            popupImage.Width = Window.Current.CoreWindow.Bounds.Width / 2;
+            popupImage.Height = Window.Current.CoreWindow.Bounds.Height / 2;
+            imagePopup.HorizontalOffset = (Window.Current.CoreWindow.Bounds.Width - popupImage.Width) / 2;
+            imagePopup.VerticalOffset = (Window.Current.CoreWindow.Bounds.Height - popupImage.Height) / 2;
+            imagePopup.IsOpen = true;
+            var ct = (CompositeTransform)popupImage.RenderTransform;
+            ct.ScaleX = 1.0f;
+            ct.ScaleY = 1.0f;
+            ct.TranslateX = 0.0f;
+            ct.TranslateY = 0.0f;
         }
 
         private void image_PointerWheelChanged(object sender, Windows.UI.Xaml.Input.PointerRoutedEventArgs e)
@@ -372,6 +366,11 @@ namespace A_Island
         private void Window_SizeChanged(object sender, Windows.UI.Core.WindowSizeChangedEventArgs e)
         {
             this.InvalidateVisualState();
+            var panel = (Grid)commentPopup.Child;
+            panel.Width = Window.Current.CoreWindow.Bounds.Width - 50;
+            panel.Height = Window.Current.CoreWindow.Bounds.Height - 200;
+            commentPopup.HorizontalOffset = (Window.Current.CoreWindow.Bounds.Width - panel.Width) / 2;
+            commentPopup.VerticalOffset = (Window.Current.CoreWindow.Bounds.Height - panel.Height) / 2;
         }
 
         /// <summary>
@@ -491,17 +490,93 @@ namespace A_Island
 
         private void postButton_Click(object sender, RoutedEventArgs e)
         {
-
+            var panel = (Grid)commentPopup.Child;
+            panel.Width = Window.Current.CoreWindow.Bounds.Width - 50;
+            panel.Height = Window.Current.CoreWindow.Bounds.Height - 200;
+            commentPopup.HorizontalOffset = (Window.Current.CoreWindow.Bounds.Width - panel.Width) / 2;
+            commentPopup.VerticalOffset = (Window.Current.CoreWindow.Bounds.Height - panel.Height) / 2;
+            commentPopup.IsOpen = true;
+            isPost = true;
+            isCommentClicked = true;
         }
 
         private void replyButton_Click(object sender, RoutedEventArgs e)
         {
-
+            var panel = (Grid)commentPopup.Child;
+            panel.Width = Window.Current.CoreWindow.Bounds.Width - 50;
+            panel.Height = Window.Current.CoreWindow.Bounds.Height - 200;
+            commentPopup.HorizontalOffset = (Window.Current.CoreWindow.Bounds.Width - panel.Width) / 2;
+            commentPopup.VerticalOffset = (Window.Current.CoreWindow.Bounds.Height - panel.Height) / 2;
+            commentPopup.IsOpen = true;
+            isPost = false;
+            isCommentClicked = true;
         }
 
         private void favButton_Click(object sender, RoutedEventArgs e)
         {
 
+        }
+
+        private void cancleButton_Click(object sender, RoutedEventArgs e)
+        {
+            commentPopup.IsOpen = false;
+        }
+
+        private void sendButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (isCommentClicked)
+            {
+                if (isPost)
+                {
+                    thread_source.postThread(commentContent.Text, commentName.Text, commentEmail.Text, commentTitle.Text, selectedFile);
+                }
+                else
+                {
+                    thread_source.postReply(clickedThread, commentContent.Text, selectedPost, commentName.Text, commentEmail.Text, commentTitle.Text, selectedFile);
+                }
+            }
+            isCommentClicked = false;
+            commentPopup.IsOpen = false;
+        }
+
+        private void saveButton_Click(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        private void ComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            var item = (ComboBox)sender;
+            if (item.SelectedIndex > 0)
+            {
+                String value = (item.SelectedItem as ComboBoxItem).Content as String;
+                int index = commentContent.SelectionStart;
+                commentContent.Text = commentContent.Text.Insert(index, value);
+                commentContent.SelectionStart = index + value.Length;
+            }
+        }
+
+        private async void Button_Click(object sender, RoutedEventArgs e)
+        {
+            var filePicker = new FileOpenPicker();
+            filePicker.FileTypeFilter.Add(".jpg");
+            filePicker.FileTypeFilter.Add(".jpeg");
+            filePicker.FileTypeFilter.Add(".png");
+            filePicker.FileTypeFilter.Add(".gif");
+            filePicker.ViewMode = PickerViewMode.Thumbnail;
+            filePicker.SuggestedStartLocation = PickerLocationId.PicturesLibrary;
+            filePicker.SettingsIdentifier = "PicturePicker";
+            filePicker.CommitButtonText = "选择文件";
+
+            selectedFile = await filePicker.PickSingleFileAsync();
+            if (selectedFile != null)
+            {
+                commentImageName.Text = selectedFile.Name;
+            }
+            else
+            {
+                commentImageName.Text = "未选择文件";
+            }
         }
 
     }

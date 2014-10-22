@@ -9,6 +9,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
+    
     <Page.Resources>
         <DataTemplate x:Key="DataTemplate">
             <Grid Margin="5">
@@ -45,14 +46,14 @@
                     </TextBlock>
                     <TextBlock Grid.Row="2" FontFamily="Microsoft YaHei" Style="{StaticResource SubtitleTextBlockStyle}" Margin="5" >
                         <Run Text="回复数：" />
-                        <Run Text="{Binding ResponseCount}" />
+                        <Run Text="{Binding ReplyCount}" />
                     </TextBlock>
                     <TextBlock Grid.Row="3" FontFamily="Microsoft YaHei" Style="{StaticResource SubtitleTextBlockStyle}" Margin="5" >
                         <Run Text="ID: " Foreground="Black"/>
                         <Run Text="{Binding UID_Special}" Foreground="Red" />
                         <Run Text="{Binding UID}" Foreground="Black" />
                     </TextBlock>
-                    <TextBlock Grid.Row="4" Text="{Binding PostDateTime}" FontFamily="Microsoft YaHei" Style="{StaticResource SubtitleTextBlockStyle}" Margin="5" />
+                    <TextBlock Grid.Row="4" Text="{Binding CreatedAt}" FontFamily="Microsoft YaHei" Style="{StaticResource SubtitleTextBlockStyle}" Margin="5" />
                 </Grid>
                 <TextBlock Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="1" FontFamily="Microsoft YaHei" Style="{StaticResource BodyTextBlockStyle}" Margin="5">
 					<Run Text="{Binding Content_Head}" Foreground="#FF789922"/>
@@ -371,6 +372,7 @@
                         </StackPanel>
                     </DataTemplate>
                 </ComboBox.ItemTemplate>
+                <ListView Height="100" Width="100"/>
             </ComboBox>
         </Grid>
 
@@ -455,7 +457,7 @@
                                 <Run Text="{Binding UID_Special}" Foreground="Red"/>
                                 <Run Text="{Binding UID}" Foreground="Black" />
                             </TextBlock>
-                            <TextBlock Grid.Row="4" Text="{Binding PostDateTime}" FontFamily="Microsoft YaHei" Style="{StaticResource SubtitleTextBlockStyle}" Margin="5" />
+                            <TextBlock Grid.Row="4" Text="{Binding CreatedAt}" FontFamily="Microsoft YaHei" Style="{StaticResource SubtitleTextBlockStyle}" Margin="5" />
                         </Grid>
                         <TextBlock Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="1" FontFamily="Microsoft YaHei" Style="{StaticResource BodyTextBlockStyle}" Margin="5">
 					<Run Text="{Binding Content_Head}" Foreground="#FF789922"/>
@@ -465,6 +467,160 @@
                 </DataTemplate>
             </ListView.ItemTemplate>
         </ListView>
+
+        <Popup x:Name="commentPopup" Grid.ColumnSpan="2" Grid.RowSpan="2" IsOpen="False">
+            <Popup.ChildTransitions>
+                <TransitionCollection>
+                    <PopupThemeTransition/>
+                </TransitionCollection>
+            </Popup.ChildTransitions>
+            <Grid Background="{ThemeResource ThumbBackgroundThemeBrush}" ScrollViewer.VerticalScrollBarVisibility="Auto">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <Grid Grid.Row="0" Grid.ColumnSpan="2">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid.Resources>
+                        <Style TargetType="Button">
+                            <Setter Property="HorizontalAlignment" Value="Center" />
+                            <Setter Property="VerticalAlignment" Value="Center" />
+                            <Setter Property="Background" Value="Transparent" />
+                            <Setter Property="FontFamily" Value="Segoe UI Symbol" />
+                            <Setter Property="FontSize" Value="26.6667" />
+                        </Style>
+                    </Grid.Resources>
+                    <Button x:Name="cancleButton" Grid.Column="0" Content="&#xE106;" Click="cancleButton_Click"/>
+                    <Button x:Name="sendButton" Grid.Column="1" Content="&#xE120;" Click="sendButton_Click"/>
+                    <Button x:Name="saveButton" Grid.Column="2" Content="&#xE28F;" Click="saveButton_Click"/>
+                </Grid>
+                <TextBlock Grid.Row="1" Grid.Column="0" Margin="10" TextWrapping="Wrap" Text="名称" TextAlignment="Center" Style="{StaticResource SubheaderTextBlockStyle}" FontFamily="Microsoft YaHei"/>
+                <TextBox x:Name="commentName" Grid.Row="1" Grid.Column="1" Margin="10" TextWrapping="Wrap" TextAlignment="Left" PlaceholderText="名称(可选)" FontFamily="Microsoft YaHei" FontSize="26.667"/>
+                <TextBlock Grid.Row="2" Grid.Column="0" Margin="10" TextWrapping="Wrap" Text="E-mail" TextAlignment="Center" Style="{StaticResource SubheaderTextBlockStyle}" FontFamily="Microsoft YaHei"/>
+                <TextBox x:Name="commentEmail" Grid.Row="2" Grid.Column="1" Margin="10" TextWrapping="Wrap" TextAlignment="Left" FontFamily="Microsoft YaHei" PlaceholderText="E-mail(可选)" FontSize="26.667"/>
+                <TextBlock Grid.Row="3" Grid.Column="0" Margin="10" TextWrapping="Wrap" TextAlignment="Center" Style="{StaticResource SubheaderTextBlockStyle}" FontFamily="Microsoft YaHei" Text="题名"/>
+                <TextBox x:Name="commentTitle" Grid.Row="3" Grid.Column="1" Margin="10" TextWrapping="Wrap" TextAlignment="Left" FontFamily="Microsoft YaHei" PlaceholderText="题名(可选)" FontSize="26.667"/>
+                <Button Grid.Row="5" Grid.Column="0" Content="选择图片" Margin="10" FontFamily="Microsoft YaHei" FontSize="26.667" Click="Button_Click"/>
+                <TextBlock x:Name="commentImageName" Grid.Row="5" Grid.Column="1" TextAlignment="Left" Margin="10" TextWrapping="Wrap" Text="未选择文件" Style="{StaticResource SubheaderTextBlockStyle}" FontFamily="Microsoft YaHei"/>
+                <ComboBox Grid.Row="4" Grid.ColumnSpan="2" Margin="10" Height="60" FontFamily="Microsoft YaHei" ToolTipService.ToolTip="" FontSize="26.667" PlaceholderText="颜文字" SelectionChanged="ComboBox_SelectionChanged">
+                    <ComboBoxItem Content="无"/>
+                    <ComboBoxItem Content="|∀ﾟ"/>
+                    <ComboBoxItem Content="('ﾟДﾟ`)"/>
+                    <ComboBoxItem Content="(;'Д`)"/>
+                    <ComboBoxItem Content="(｀･ω･)"/>
+                    <ComboBoxItem Content="(=ﾟωﾟ)="/>
+                    <ComboBoxItem Content="| ω・')"/>
+                    <ComboBoxItem Content="|-` )"/>
+                    <ComboBoxItem Content="|д` )"/>
+                    <ComboBoxItem Content="|ー` )"/>
+                    <ComboBoxItem Content="|∀` )"/>
+                    <ComboBoxItem Content="(つд⊂)"/>
+                    <ComboBoxItem Content="(ﾟДﾟ≡ﾟДﾟ)"/>
+                    <ComboBoxItem Content="(＾o＾)ﾉ"/>
+                    <ComboBoxItem Content="(|||ﾟДﾟ)"/>
+                    <ComboBoxItem Content="( ﾟ∀ﾟ)"/>
+                    <ComboBoxItem Content="( '∀`)"/>
+                    <ComboBoxItem Content="(*'∀`)"/>
+                    <ComboBoxItem Content="(*ﾟ∇ﾟ)"/>
+                    <ComboBoxItem Content="(*ﾟーﾟ)"/>
+                    <ComboBoxItem Content="(　ﾟ 3ﾟ)"/>
+                    <ComboBoxItem Content="( 'ー`)"/>
+                    <ComboBoxItem Content="( ・_ゝ・)"/>
+                    <ComboBoxItem Content="( '_ゝ`)"/>
+                    <ComboBoxItem Content="(*'д`)"/>
+                    <ComboBoxItem Content="(・ー・)"/>
+                    <ComboBoxItem Content="(・∀・)"/>
+                    <ComboBoxItem Content="(ゝ∀･)"/>
+                    <ComboBoxItem Content="(〃∀〃)"/>
+                    <ComboBoxItem Content="(*ﾟ∀ﾟ*)"/>
+                    <ComboBoxItem Content="( ﾟ∀。)"/>
+                    <ComboBoxItem Content="( `д')"/>
+                    <ComboBoxItem Content="(`ε' )"/>
+                    <ComboBoxItem Content="(`ヮ' )"/>
+                    <ComboBoxItem Content="σ`∀')"/>
+                    <ComboBoxItem Content=" ﾟ∀ﾟ)σ"/>
+                    <ComboBoxItem Content="ﾟ ∀ﾟ)ノ"/>
+                    <ComboBoxItem Content="(╬ﾟдﾟ)"/>
+                    <ComboBoxItem Content="(|||ﾟдﾟ)"/>
+                    <ComboBoxItem Content="( ﾟдﾟ)"/>
+                    <ComboBoxItem Content="Σ( ﾟдﾟ)"/>
+                    <ComboBoxItem Content="( ;ﾟдﾟ)"/>
+                    <ComboBoxItem Content="( ;'д`)"/>
+                    <ComboBoxItem Content="(　д ) ﾟ ﾟ"/>
+                    <ComboBoxItem Content="( ☉д⊙)"/>
+                    <ComboBoxItem Content="(((　ﾟдﾟ)))"/>
+                    <ComboBoxItem Content="( ` ・')"/>
+                    <ComboBoxItem Content="( 'д`)"/>
+                    <ComboBoxItem Content="( -д-)"/>
+                    <ComboBoxItem Content="･ﾟ( ﾉд`ﾟ)"/>
+                    <ComboBoxItem Content="( TдT)"/>
+                    <ComboBoxItem Content="(￣∇￣)"/>
+                    <ComboBoxItem Content="(￣3￣)"/>
+                    <ComboBoxItem Content="(￣ｰ￣)"/>
+                    <ComboBoxItem Content="(￣ . ￣)"/>
+                    <ComboBoxItem Content="(￣皿￣)"/>
+                    <ComboBoxItem Content="(￣艸￣)"/>
+                    <ComboBoxItem Content="(￣︿￣)"/>
+                    <ComboBoxItem Content="(￣︶￣)"/>
+                    <ComboBoxItem Content="ヾ('ωﾟ｀)"/>
+                    <ComboBoxItem Content="(*'ω`*)"/>
+                    <ComboBoxItem Content="(・ω・)"/>
+                    <ComboBoxItem Content="( '・ω)"/>
+                    <ComboBoxItem Content="(｀・ω)"/>
+                    <ComboBoxItem Content="('・ω・`)"/>
+                    <ComboBoxItem Content="(`・ω・')"/>
+                    <ComboBoxItem Content="( `_っ')"/>
+                    <ComboBoxItem Content="( `ー')"/>
+                    <ComboBoxItem Content="( '_っ`)"/>
+                    <ComboBoxItem Content="( 'ρ`)"/>
+                    <ComboBoxItem Content="( ﾟωﾟ)"/>
+                    <ComboBoxItem Content="(oﾟωﾟo)"/>
+                    <ComboBoxItem Content="(　^ω^)"/>
+                    <ComboBoxItem Content="(｡◕∀◕｡)"/>
+                    <ComboBoxItem Content="/( ◕‿‿◕ )\\"/>
+                    <ComboBoxItem Content="ヾ('ε`ヾ)"/>
+                    <ComboBoxItem Content="(ノﾟ∀ﾟ)ノ"/>
+                    <ComboBoxItem Content="(σﾟдﾟ)σ"/>
+                    <ComboBoxItem Content="(σﾟ∀ﾟ)σ"/>
+                    <ComboBoxItem Content="|дﾟ )"/>
+                    <ComboBoxItem Content="┃電柱┃"/>
+                    <ComboBoxItem Content="ﾟ(つд`ﾟ)"/>
+                    <ComboBoxItem Content="ﾟÅﾟ )　"/>
+                    <ComboBoxItem Content="⊂彡☆))д`)"/>
+                    <ComboBoxItem Content="⊂彡☆))д')"/>
+                    <ComboBoxItem Content="⊂彡☆))∀`)"/>
+                    <ComboBoxItem Content="('∀((☆ミつ"/>
+                </ComboBox>
+                <TextBlock Grid.Row="6" Grid.ColumnSpan="2" TextAlignment="Center" Margin="10" TextWrapping="Wrap" Text="正文" Style="{StaticResource SubheaderTextBlockStyle}" FontFamily="Microsoft YaHei"/>
+                <TextBox x:Name="commentContent" Grid.Row="7" Grid.ColumnSpan="2" Margin="10" TextWrapping="Wrap" FontFamily="Microsoft YaHei" PlaceholderText="正文" FontSize="26.667" ScrollViewer.VerticalScrollBarVisibility="Auto"/>
+            </Grid>
+        </Popup>
+
+        <Popup x:Name="imagePopup" Grid.ColumnSpan="2" Grid.RowSpan="2" IsLightDismissEnabled="True" IsOpen="False">
+            <Popup.ChildTransitions>
+                <TransitionCollection>
+                    <PopupThemeTransition/>
+                </TransitionCollection>
+            </Popup.ChildTransitions>
+            <Image x:Name="popupImage" HorizontalAlignment="Center" VerticalAlignment="Center" PointerWheelChanged="image_PointerWheelChanged" ManipulationDelta="image_ManipulationDelta"/>
+        </Popup>
 
         <VisualStateManager.VisualStateGroups>
 
