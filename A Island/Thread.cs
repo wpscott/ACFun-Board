@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -365,28 +366,34 @@ namespace A_Island
         public PostThread():base(){}
     }
 
-    public sealed class Thread : IEquatable<Thread>
+    public sealed class Thread : INotifyPropertyChanged, IEquatable<Thread>
     {
-        public bool Lock { get; set; }
-        public bool Sage { get; set; }
-        public string UID { get; set; }
-        public string UID_Special { get; set; }
-        public uint ID { get; set; }
-        public uint ReplyCount { get; set; }
-        public string Name { get; set; }
-        public string Email { get; set; }
-        public string Title { get; set; }
-        public string Content { get; set; }
-        public string Content_Head { get; set; }
-        public string Image { get; set; }
-        public string Thumb { get; set; }
-        public DateTime CreatedAt { get; set; }
-        public DateTime UpdatedAt { get; set; }
-        public BitmapImage OrgImage { get; set; }
-        public BitmapImage ThImage { get; set; }
-        public uint Forum { get; set; }
-        public uint parent { get; set; }
-        public uint[] RecentReply { get; set; }
+        private bool _lock, _sage;
+        private string _uid, _uid_special, _name, _email, _title, _content, _content_head, _image, _thumb;
+        private uint _id, _replycount, _forum, _parent;
+        private DateTime _createdat, _updatedat;
+        private BitmapImage _orgimage, _thimage;
+        private uint[] recentreply;
+        public bool Lock { get { return _lock; } set { _lock = value; NotifyPropertyChanged("Lock"); } }
+        public bool Sage { get { return _sage; } set { _sage = value; NotifyPropertyChanged("Sage"); } }
+        public string UID { get { return _uid; } set { _uid = value; NotifyPropertyChanged("UID"); } }
+        public string UID_Special { get { return _uid_special; } set { _uid_special = value; NotifyPropertyChanged("UID_Special"); } }
+        public uint ID { get { return _id; } set { _id = value; NotifyPropertyChanged("ID"); } }
+        public uint ReplyCount { get { return _replycount; } set { _replycount = value; NotifyPropertyChanged("ReplyCount"); } }
+        public string Name { get { return _name; } set { _name = value; NotifyPropertyChanged("Name"); } }
+        public string Email { get { return _email; } set { _email = value; NotifyPropertyChanged("Email"); } }
+        public string Title { get { return _title; } set { _title = value; NotifyPropertyChanged("Title"); } }
+        public string Content { get { return _content; } set { _content = value; NotifyPropertyChanged("Content"); } }
+        public string Content_Head { get { return _content_head; } set { _content_head = value; NotifyPropertyChanged("Content_Head"); } }
+        public string Image { get { return _image; } set { _image = value; NotifyPropertyChanged("Image"); } }
+        public string Thumb { get { return _thumb; } set { _thumb = value; NotifyPropertyChanged("Thumb"); } }
+        public DateTime CreatedAt { get { return _createdat; } set { _createdat = value; NotifyPropertyChanged("CreatedAt"); } }
+        public DateTime UpdatedAt { get { return _updatedat; } set { _updatedat = value; NotifyPropertyChanged("UpdatedAt"); } }
+        public BitmapImage OrgImage { get { return _orgimage; } set { _orgimage = value; NotifyPropertyChanged("OrgImage"); } }
+        public BitmapImage ThImage { get { return _thimage; } set { _thimage = value; NotifyPropertyChanged("ThImage"); } }
+        public uint Forum { get { return _forum; } set { _forum = value; NotifyPropertyChanged("Forum"); } }
+        public uint parent { get { return _parent; } set { _parent = value; NotifyPropertyChanged("parent"); } }
+        public uint[] RecentReply { get { return recentreply; } set { recentreply = value; NotifyPropertyChanged("RecentReply"); } }
 
         public Thread() { }
 
@@ -398,6 +405,15 @@ namespace A_Island
         public bool Equals(Thread other)
         {
             return this.ID.Equals(other.ID);
+        }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+        private void NotifyPropertyChanged(string propName)
+        {
+            if (PropertyChanged != null)
+            {
+                PropertyChanged(this, new PropertyChangedEventArgs(propName));
+            }
         }
     }
 

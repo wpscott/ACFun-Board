@@ -386,7 +386,7 @@
             IsItemClickEnabled="True"
             ItemClick="itemListView_ItemClick" ItemTemplate="{StaticResource DataTemplate}" ItemContainerStyle="{StaticResource ListViewItemStyle}" />
 
-        <Image x:Name="imgCover" Margin="5" Source="http://wiki.acfun.tv/keyheaders/cover.php" Grid.Column="1" Grid.RowSpan="2"/>
+        <Image x:Name="imgCover" Margin="5" Source="http://h.acfunwiki.org/cover.php" Grid.Column="1" Grid.RowSpan="2"/>
         <Grid x:Name="options" Grid.Column ="1" Grid.Row="0" Margin="5" Visibility="Collapsed">
             <Grid.RowDefinitions>
                 <RowDefinition Height="140" />
@@ -405,6 +405,7 @@
                     <Setter Property="FontFamily" Value="Segoe UI Symbol" />
                     <Setter Property="FontSize" Value="30" />
                 </Style>
+                <Storyboard x:Name="GIF" RepeatBehavior="Forever"/>
             </Grid.Resources>
             <Button x:Name="refreshButton" Grid.Column="0" Content="&#xE117;" Click="refreshButton_Click"/>
             <Button x:Name="postButton" Grid.Column="1" Content="&#xE1C2;" Click="postButton_Click"/>
@@ -613,13 +614,13 @@
             </Grid>
         </Popup>
 
-        <Popup x:Name="imagePopup" Grid.ColumnSpan="2" Grid.RowSpan="2" IsLightDismissEnabled="True" IsOpen="False">
+        <Popup x:Name="imagePopup" Grid.ColumnSpan="2" Grid.RowSpan="2" IsLightDismissEnabled="True" IsOpen="False" >
             <Popup.ChildTransitions>
                 <TransitionCollection>
                     <PopupThemeTransition/>
                 </TransitionCollection>
             </Popup.ChildTransitions>
-            <Image x:Name="popupImage" HorizontalAlignment="Center" VerticalAlignment="Center" PointerWheelChanged="image_PointerWheelChanged" ManipulationDelta="image_ManipulationDelta"/>
+            <Image x:Name="popupImage" HorizontalAlignment="Center" VerticalAlignment="Center" PointerWheelChanged="image_PointerWheelChanged" ManipulationDelta="image_ManipulationDelta" />
         </Popup>
 
         <VisualStateManager.VisualStateGroups>

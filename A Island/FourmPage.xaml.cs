@@ -31,10 +31,13 @@ namespace A_Island
         private NavigationHelper navigationHelper;
         private ObservableDictionary defaultViewModel = new ObservableDictionary();
         private StorageFile selectedFile;
-        private ThreadSource forum_source = new ThreadSource(), thread_source = new ThreadSource();
+        //private ThreadSource forum_source = new ThreadSource(), thread_source = new ThreadSource();
         private ForumList forum_list = new ForumList();
+        private AcFunViewModel vm_forum = new AcFunViewModel(), vm_thread = new AcFunViewModel();
         private bool isItemClicked = false, isPost = false, isCommentClicked = false;
         private uint clickedThread, selectedPost;
+        private List<WriteableBitmap> gifFrames = new List<WriteableBitmap>();
+        private bool isGIF = false;
 
         private const uint LOAD = 100;
         private const uint REFRESH = 50;
@@ -77,10 +80,10 @@ namespace A_Island
             this.Loaded += ForumPage_Loaded;
             itemListView.Loaded += itemListView_Loaded;
             itemDetail.LayoutUpdated += itemDetail_LayoutUpdated;
-            thread_source.canRefresh = true;
-            thread_source.hasLoadedMore = false;
-            forum_source.canRefresh = true;
-            thread_source.hasLoadedMore = false;
+            vm_thread.canRefresh = true;
+            vm_thread.hasLoadedMore = false;
+            vm_forum.canRefresh = true;
+            vm_forum.hasLoadedMore = false;
 
             popupImage.RenderTransform = new CompositeTransform();
             popupImage.ManipulationMode = Windows.UI.Xaml.Input.ManipulationModes.Scale | Windows.UI.Xaml.Input.ManipulationModes.TranslateX | Windows.UI.Xaml.Input.ManipulationModes.TranslateY;
@@ -99,29 +102,29 @@ namespace A_Island
         private void threadScrollBar_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
         {
             ScrollBar scrollbar = sender as ScrollBar;
-            if (e.NewValue > e.OldValue && e.NewValue > scrollbar.Maximum - LOAD && !thread_source.hasLoadedMore)
+            if (e.NewValue > e.OldValue && e.NewValue > scrollbar.Maximum - LOAD && !vm_thread.hasLoadedMore)
             {
-                thread_source.hasLoadedMore = true;
+                vm_thread.hasLoadedMore = true;
 #if DEBUG
                 Debug.WriteLine("Load");
 #endif
-                thread_source.loadMore();
+                vm_thread.loadMore();
             }
-            if (e.NewValue < e.OldValue && e.NewValue < scrollbar.Minimum + REFRESH && thread_source.canRefresh)
+            if (e.NewValue < e.OldValue && e.NewValue < scrollbar.Minimum + REFRESH && vm_thread.canRefresh)
             {
-                thread_source.canRefresh = false;
+                vm_thread.canRefresh = false;
 #if DEBUG
                 Debug.WriteLine("Refresh");
 #endif
-                thread_source.changeThread(thread_source.thread_id);
+                vm_thread.changeThread(vm_thread.ThreadID);
             }
             if (e.NewValue > scrollbar.Minimum + REFRESH)
             {
-                thread_source.canRefresh = true;
+                vm_thread.canRefresh = true;
             }
             if (e.NewValue < scrollbar.Maximum - LOAD)
             {
-                thread_source.hasLoadedMore = false;
+                vm_thread.hasLoadedMore = false;
             }
         }
 
@@ -135,37 +138,39 @@ namespace A_Island
         private void forumScrollBar_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
         {
             ScrollBar scrollbar = sender as ScrollBar;
-            if (e.NewValue > e.OldValue && e.NewValue > scrollbar.Maximum - LOAD && !forum_source.hasLoadedMore)
+            if (e.NewValue > e.OldValue && e.NewValue > scrollbar.Maximum - LOAD && !vm_forum.hasLoadedMore)
             {
-                forum_source.hasLoadedMore = true;
+                vm_forum.hasLoadedMore = true;
 #if DEBUG
                 Debug.WriteLine("Load");
 #endif
-                forum_source.loadMore();
+                vm_forum.loadMore();
             }
-            if (e.NewValue < e.OldValue && e.NewValue < scrollbar.Minimum + REFRESH && forum_source.canRefresh)
+            if (e.NewValue < e.OldValue && e.NewValue < scrollbar.Minimum + REFRESH && vm_forum.canRefresh)
             {
-                forum_source.canRefresh = false;
+                vm_forum.canRefresh = false;
 #if DEBUG
                 Debug.WriteLine("Refresh");
 #endif
-                forum_source.changeForum(forum_source.forum_name);
+                vm_forum.changeForum(vm_forum.ForumName);
             }
             if (e.NewValue > scrollbar.Minimum + REFRESH)
             {
-                forum_source.canRefresh = true;
+                vm_forum.canRefresh = true;
             }
             if (e.NewValue < scrollbar.Maximum - LOAD)
             {
-                forum_source.hasLoadedMore = false;
+                vm_forum.hasLoadedMore = false;
             }
         }
 
         void ForumPage_Loaded(object sender, RoutedEventArgs e)
         {
             pageTitle.ItemsSource = forum_list;
-            itemListView.ItemsSource = forum_source;
-            itemDetail.ItemsSource = thread_source;
+            itemListView.ItemsSource = vm_forum.Source;
+            itemListView.DataContext = vm_forum;
+            itemDetail.ItemsSource = vm_thread.Source;
+            itemDetail.DataContext = vm_thread;
             pageTitle.SelectionChanged += pageTitle_SelectionChanged;
             pageTitle.SelectedIndex = 0;
         }
@@ -221,11 +226,11 @@ namespace A_Island
                 options.Visibility = Visibility.Visible;
             }
             clickedThread = (e.ClickedItem as Thread).ID;
-            thread_source.changeThread(clickedThread);
+            vm_thread.changeThread(clickedThread);
             selectedPost = 0;
             this.InvalidateVisualState();
 #if DEBUG
-            Debug.WriteLine("Click ID: " + thread_source.thread_id);
+            Debug.WriteLine("Click ID: " + vm_thread.ThreadID);
 #endif
         }
 
@@ -265,9 +270,9 @@ namespace A_Island
         private void pageTitle_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             var select = ((sender as ComboBox).SelectedItem as Item).Name;
-            forum_source.changeForum(select);
+            vm_forum.changeForum(select);
             forum_list.onClick(select);
-            thread_source.Clear();
+            vm_thread.Source.Clear();
             if (imgCover != null)
             {
                 if (imgCover.Visibility == Visibility.Collapsed)
@@ -294,33 +299,96 @@ namespace A_Island
             }
         }
 
-        private void Image_Tapped(object sender, TappedRoutedEventArgs e)
+        private async void Image_Tapped(object sender, TappedRoutedEventArgs e)
         {
-            popupImage.Source = new BitmapImage(new Uri(((sender as Image).DataContext as Thread).Image));
+            isGIF = false;
+            if (GIF.GetCurrentState() == ClockState.Active)
+            {
+                GIF.Stop();
+                gifFrames.Clear();
+            }
+            string imageUrl = ((sender as Image).DataContext as Thread).Image;
+            Uri imageUri = new Uri(imageUrl);
+            if (imageUrl.EndsWith(".gif"))
+            {
+                isGIF = true;
+                var rass = RandomAccessStreamReference.CreateFromUri(imageUri);
+                IRandomAccessStream stream = await rass.OpenReadAsync();
+                BitmapDecoder gif = await BitmapDecoder.CreateAsync(stream);
+                uint frameCount = gif.FrameCount;
+                BitmapFrame frame = await gif.GetFrameAsync(0);
+                var frameProperties = await frame.BitmapProperties.GetPropertiesAsync(new List<string>());
+
+                var gifControlExtensionProperties = await (frameProperties["/grctlext"].Value as BitmapPropertiesView).GetPropertiesAsync(new List<string>() { "/Delay" });
+                TimeSpan delay = TimeSpan.FromSeconds(Double.Parse(gifControlExtensionProperties["/Delay"].Value.ToString()) / 100);
+                BitmapTransform transform = new BitmapTransform()
+                {
+                    ScaledWidth = gif.OrientedPixelWidth,
+                    ScaledHeight = gif.OrientedPixelHeight
+                };
+                for (uint i = 0; i < frameCount; i++)
+                {
+                    frame = await gif.GetFrameAsync(i);
+                    PixelDataProvider pixelData = await frame.GetPixelDataAsync(BitmapPixelFormat.Bgra8, gif.BitmapAlphaMode, transform, ExifOrientationMode.IgnoreExifOrientation, ColorManagementMode.DoNotColorManage);
+                    byte[] sourcePixel = pixelData.DetachPixelData();
+                    WriteableBitmap gif_frame = new WriteableBitmap((int)gif.OrientedPixelWidth, (int)gif.OrientedPixelHeight);
+                    using (Stream s = gif_frame.PixelBuffer.AsStream())
+                    {
+                        await s.WriteAsync(sourcePixel, 0, sourcePixel.Length);
+                    }
+                    gifFrames.Add(gif_frame);
+                }
+                if (GIF.Children.Count > 0)
+                {
+                    GIF.Children.Clear();
+                }
+                var anim = new ObjectAnimationUsingKeyFrames();
+                anim.BeginTime = TimeSpan.FromSeconds(0);
+                var ts = new TimeSpan();
+                for (int frameIndex = 0; frameIndex < gifFrames.Count; frameIndex++)
+                {
+                    var keyFrame = new DiscreteObjectKeyFrame();
+                    keyFrame.KeyTime = KeyTime.FromTimeSpan(ts);
+                    keyFrame.Value = gifFrames[frameIndex];
+                    ts = ts.Add(delay);
+                    anim.KeyFrames.Add(keyFrame);
+                }
+                Storyboard.SetTarget(anim, popupImage);
+                Storyboard.SetTargetProperty(anim, "Source");
+                GIF.Children.Add(anim);
+                GIF.Begin();
+                popupImage.Width = gif.OrientedPixelWidth;
+                popupImage.Height = gif.OrientedPixelHeight;
+            }
+            else
+            {
+                BitmapImage image = new BitmapImage(imageUri);
+                popupImage.Source = image;
+                popupImage.Width = Window.Current.CoreWindow.Bounds.Width / 2;
+                popupImage.Height = Window.Current.CoreWindow.Bounds.Height / 2;
+            }
             System.GC.Collect();
-            popupImage.Width = Window.Current.CoreWindow.Bounds.Width / 2;
-            popupImage.Height = Window.Current.CoreWindow.Bounds.Height / 2;
-            imagePopup.HorizontalOffset = (Window.Current.CoreWindow.Bounds.Width - popupImage.Width) / 2;
-            imagePopup.VerticalOffset = (Window.Current.CoreWindow.Bounds.Height - popupImage.Height) / 2;
-            imagePopup.IsOpen = true;
             var ct = (CompositeTransform)popupImage.RenderTransform;
             ct.ScaleX = 1.0f;
             ct.ScaleY = 1.0f;
             ct.TranslateX = 0.0f;
             ct.TranslateY = 0.0f;
+            imagePopup.HorizontalOffset = (Window.Current.CoreWindow.Bounds.Width - popupImage.Width) / 2;
+            imagePopup.VerticalOffset = (Window.Current.CoreWindow.Bounds.Height - popupImage.Height) / 2;
+            imagePopup.IsOpen = true;
         }
 
         private void image_PointerWheelChanged(object sender, Windows.UI.Xaml.Input.PointerRoutedEventArgs e)
         {
             var ct = (CompositeTransform)(sender as Image).RenderTransform;
-            if (e.GetCurrentPoint(sender as UIElement).Properties.MouseWheelDelta > 0)
+            if (!isGIF && e.GetCurrentPoint(sender as UIElement).Properties.MouseWheelDelta > 0)
             {
                 ct.ScaleX += SCALE_RATE;
                 ct.ScaleY += SCALE_RATE;
             }
             else
             {
-                if (ct.ScaleX - SCALE_RATE > 0 && ct.ScaleY - SCALE_RATE > 0)
+                if (!isGIF && ct.ScaleX - SCALE_RATE > 0.2 && ct.ScaleY - SCALE_RATE > 0.2)
                 {
                     ct.ScaleX -= SCALE_RATE;
                     ct.ScaleY -= SCALE_RATE;
@@ -477,15 +545,15 @@ namespace A_Island
         public void Dispose()
         {
             forum_list.Dispose();
-            forum_source.Dispose();
-            thread_source.Dispose();
-            forum_source = null;
-            thread_source = null;
+            //forum_source.Dispose();
+            //thread_source.Dispose();
+            //forum_source = null;
+            //thread_source = null;
         }
 
         private void refreshButton_Click(object sender, RoutedEventArgs e)
         {
-            thread_source.changeThread(thread_source.thread_id);
+            vm_thread.changeThread(vm_thread.ThreadID);
         }
 
         private void postButton_Click(object sender, RoutedEventArgs e)
@@ -528,11 +596,11 @@ namespace A_Island
             {
                 if (isPost)
                 {
-                    thread_source.postThread(commentContent.Text, commentName.Text, commentEmail.Text, commentTitle.Text, selectedFile);
+                    //thread_source.postThread(commentContent.Text, commentName.Text, commentEmail.Text, commentTitle.Text, selectedFile);
                 }
                 else
                 {
-                    thread_source.postReply(clickedThread, commentContent.Text, selectedPost, commentName.Text, commentEmail.Text, commentTitle.Text, selectedFile);
+                    //thread_source.postReply(clickedThread, commentContent.Text, selectedPost, commentName.Text, commentEmail.Text, commentTitle.Text, selectedFile);
                 }
             }
             isCommentClicked = false;
